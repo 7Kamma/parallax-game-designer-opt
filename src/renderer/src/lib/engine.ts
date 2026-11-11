@@ -261,7 +261,7 @@ async function generate(sessionId: string, participant: Participant, signal: Abo
     const totalMs = performance.now() - started
     store().patchMessage(sessionId, messageId, (m) => ({
       status: result.refusal ? 'refused' : 'done',
-      notice: result.refusal ? refusalNotice(result.refusal) : result.notice ?? (designAttempt ? 'New design direction' : undefined),
+      notice: result.refusal ? refusalNotice(result.refusal) : result.notice ?? (designAttempt ? 'New direction' : undefined),
       metrics: {
         firstTokenMs,
         totalMs,

@@ -116,7 +116,7 @@ function ProviderEditor({ provider }: { provider: ProviderConfig }) {
   const signInWithCursor = async () => {
     if (!cursorSignIn || !preset) return
     setBusy('key')
-    setStatus({ kind: 'info', text: '请在浏览器中完成 Cursor 授权。' })
+    setStatus({ kind: 'info', text: 'Finish signing in to Cursor in your browser.' })
     try {
       await cursorSignIn(provider.id)
       if (provider.baseUrl !== preset.baseUrl) updateProvider(provider.id, { baseUrl: preset.baseUrl })
@@ -187,7 +187,7 @@ function ProviderEditor({ provider }: { provider: ProviderConfig }) {
         {cursorSignIn && (
           <Button variant="primary" onClick={() => void signInWithCursor()} disabled={busy !== null}>
             {busy === 'key' && <LoaderCircle className="size-4 animate-spin" />}
-            使用 Cursor 登录
+            Continue with Cursor
           </Button>
         )}
         <div className="flex items-center justify-between">

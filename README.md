@@ -4,27 +4,27 @@
 
 # Parallax Game Designer Opt
 
-由 [7Kamma](https://github.com/7Kamma) 维护的游戏设计二次修改版，支持单模型讨论、多模型横向对比和群聊评审。
+A game design fork maintained by [7Kamma](https://github.com/7Kamma). Discuss ideas with one model, compare several side by side, or bring them into a group chat.
 
-[Windows 构建](#windows-desktop-app) ·
-[维护文档](docs/maintenance.md) ·
-[Parallax 原版](https://github.com/Houchen181/parallax/tree/v0.4.2)
+[Build for Windows](#windows-desktop-app) ·
+[Maintenance guide](docs/maintenance.md) ·
+[Upstream Parallax](https://github.com/Houchen181/parallax/tree/v0.4.2)
 
 </div>
 
-**来源与许可证**　原项目为 Houchen181 的 [Parallax v0.4.2](https://github.com/Houchen181/parallax/tree/v0.4.2)，基线提交为 [`eae0d3a`](https://github.com/Houchen181/parallax/commit/eae0d3a307487cc31ec60f7ee93b2e25ae6c40e0)。本仓库采用 [MIT License](LICENSE)，保留原作者的版权及许可声明。
+This fork is based on Houchen181's [Parallax v0.4.2](https://github.com/Houchen181/parallax/tree/v0.4.2) at commit [`eae0d3a`](https://github.com/Houchen181/parallax/commit/eae0d3a307487cc31ec60f7ee93b2e25ae6c40e0). The [MIT License](LICENSE) includes the original copyright and license notices.
 
-## 相比原版的改动
+## What's different from upstream
 
-| 改动 | 用法 |
+| Change | How it works |
 |---|---|
-| **游戏设计提示** | 单聊会追查规则与激励并给出验证办法。横向对比让各模型用相同维度独立提案。群聊按玩家体验、系统平衡、制作与试玩等角度分工。对话菜单中的 **Instructions / design brief** 可记录目标、约束和已定方案，横向对比也可填写一份共用简报。 |
-| **群聊先提案，再互评** | 首轮模型共享用户提问时的上下文，各自独立回答。点 **Continue** 后，模型读取提案并按相同的体验目标与约束比较。 |
-| **换方向** | 当前方案缺少新意时，点输入框旁的 **换方向**。本轮使用简报与用户消息，暂时省略模型旧回答，并轮换构思方法。输入框内的草稿会一并发送。 |
-| **统一思考强度** | 发送按钮旁的下拉框按对话保存。群聊和横向对比显示参与模型中最多的档位，再映射到各模型支持的值。支持 ChatGPT Plan、Cursor SDK、DeepSeek 官方接口和支持 effort 的 Claude。 |
-| **Cursor 订阅** | Windows 桌面版在 **Settings → Providers → Add provider → Cursor SDK** 提供 **使用 Cursor 登录**。浏览器授权后，通过 Cursor 官方 SDK 调用该账号可用的模型。 |
+| **Game design guidance** | Single-model chats dig into rules, incentives, and ways to test a proposal. Side-by-side comparisons give models the same criteria. Group chats assign perspectives such as player experience, systems and balance, and scope and playtesting. Record goals, constraints, and decisions under **Instructions / design brief**, or share one brief across a comparison. |
+| **Independent proposals in group chats** | Each model answers the opening round independently. Click **Continue** to have the models review the proposals against the same experience goals and constraints. |
+| **New direction** | Try a fresh approach from the composer. Each attempt uses the brief and your messages, leaves earlier model replies out of the request, and rotates the ideation approach. Text in the composer is sent with the request. |
+| **Shared reasoning effort** | The selector next to Send saves effort per conversation. Group chats and side-by-side comparisons show the most detailed scale available and map it to each model's supported levels. This works with ChatGPT Plan, Cursor SDK, the official DeepSeek API, and Claude models that support effort. |
+| **Cursor plan usage** | In the Windows desktop app, open **Settings → Providers → Add provider → Cursor SDK** and select **Continue with Cursor**. After browser authorization, the official Cursor SDK uses the models available to your account. |
 
-下方截图来自上游 Parallax，展示基本界面。
+The screenshots below show the upstream Parallax interface.
 
 ![Three models answering the same prompt side by side](docs/screenshots/compare.png)
 
@@ -79,7 +79,7 @@ npm run dist:win
 ```
 
 Run `release/Parallax-Setup-<version>.exe`. The fork uses the Parallax app identity and user-data directory.
-Use the installer to update an existing installation. See [maintenance](docs/maintenance.md#windows-构建与更新)
+Use the installer to update an existing installation. See the [maintenance guide](docs/maintenance.md#windows-builds-and-updates)
 for packaging checks. The [upstream releases](https://github.com/Houchen181/parallax/releases) contain the original app.
 
 ### Web version
@@ -96,8 +96,8 @@ run its local web version below.
 
 ### Run the web version on your computer
 
-This runs Parallax in your browser, served from your own computer. Because it then counts as a local app, it
-gets the same powers as the desktop app:
+The local server handles provider credentials and requests for the browser app.
+
 - **Sign in with ChatGPT** works.
 - The local server can connect to HTTP providers that block direct browser requests. Cursor SDK runs in the Electron desktop app.
 - API keys stay out of the browser.
@@ -127,7 +127,7 @@ Parallax opens at <http://127.0.0.1:4747/>.
 1. Open **Settings → Providers**, pick a provider and paste your API key. Parallax fetches that provider's
    model list automatically. To add another provider, click **Add provider** and choose one of the presets.
    With a ChatGPT Plus or Pro plan, you can instead pick **ChatGPT plan** and click **Continue with ChatGPT**
-   (desktop app or local web version). On Windows, add **Cursor SDK** and choose **使用 Cursor 登录** to use Cursor.
+   (desktop app or local web version). On Windows, add **Cursor SDK** and choose **Continue with Cursor** to use Cursor.
 2. Start a chat with **New chat** and pick a model at the top of the pane.
 3. To compare models, click **Compare models**, tick the models you want and type a question. You can set a
    shared design brief and reasoning effort before opening the panes. Each model gets its own pane.

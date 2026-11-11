@@ -8,8 +8,8 @@ export function ReasoningEffortSelect({ options, value, onChange }: {
   if (!options.length) return null
   return (
     <select
-      aria-label="思考强度"
-      title="思考强度"
+      aria-label="Reasoning effort"
+      title="Reasoning effort"
       className={cn(inputClass, 'h-8 w-28! shrink-0 py-0 text-xs')}
       value={value ?? '__mixed__'}
       onChange={(e) => onChange(e.target.value)}

@@ -8,11 +8,11 @@ const usable = (m: Message) => m.content.trim().length > 0 && m.status !== 'erro
 export type PromptSettings = Pick<Settings, 'defaultSystemPrompt'> & { group: Pick<GroupSettings, 'announceRoster'> }
 
 export const GAME_DESIGN_BRIEF = [
-  '目标玩家与游玩场景：',
-  '希望玩家体验到什么：',
-  '现有玩法与已确认的设计决定：',
-  '平台、内容或制作成本约束：',
-  '已有试玩证据与关键未知：',
+  'Target players and play context',
+  'Desired player experience',
+  'Current gameplay and confirmed design decisions',
+  'Platform, content, and production constraints',
+  'Playtest evidence and open questions',
 ].join('\n')
 
 const GAME_DESIGN_FOCUSES = [

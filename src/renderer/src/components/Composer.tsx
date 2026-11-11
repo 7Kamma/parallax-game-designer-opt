@@ -171,14 +171,14 @@ export function Composer() {
             {canExplore && busy.length === 0 && !blocked && (
               <button
                 type="button"
-                title="保留你的简报和消息，隐藏之前的模型回答。输入框有草稿时会一并发送。"
+                title="Try a fresh approach using only your brief and messages. Sends any text in the input box."
                 onClick={() => {
                   sendPrompt(text, targets, { newDesignDirection: true })
                   setText('')
                 }}
                 className="inline-flex h-8 shrink-0 items-center rounded-full border border-line px-3 text-xs text-muted hover:bg-hover hover:text-fg"
               >
-                换方向
+                New direction
               </button>
             )}
             <ReasoningEffortSelect options={effortOptions} value={effort} onChange={(value) => {
