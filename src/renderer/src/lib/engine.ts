@@ -2,14 +2,15 @@
 // streams replies into the store, and drives group-chat rounds.
 import { findModel, flushPersist, providerProblem, useStore } from '../store'
 import { isAbortError } from './http'
-import { newId } from './platform'
+import { bridge, newId } from './platform'
 import { chatTurns, estimateTokens, groupOpeningHistory, groupTurns, parseMentions, stripSpeakerPrefix, systemPromptFor } from './prompt'
 import { conversationEffortOptions, reasoningEffortOptions, sessionReasoningEffort } from './reasoningEffort'
 import { adapterFor } from './providers'
 import { DEMO_COMPARE_PROMPT, DEMO_GROUP_PROMPT } from './providers/demo'
 import { DEMO_MODELS, DEMO_PROVIDER_ID } from './providers/presets'
-import { ProviderError, type ChatResult } from './providers/types'
+import { ProviderError, type ChatRequest, type ChatResult } from './providers/types'
 import type { Message, Participant } from './types'
+import { citeWorkspace, retrieveWorkspace } from './workspace'
 
 const controllers = new Map<string, AbortController>()
 const store = () => useStore.getState()
@@ -226,6 +227,7 @@ async function generate(sessionId: string, participant: Participant, signal: Abo
   const buffer = new DeltaBuffer(sessionId, messageId, group ? (s) => stripSpeakerPrefix(s, participant.name) : undefined)
   const started = performance.now()
   let firstTokenMs: number | undefined
+  let evidence: Parameters<typeof citeWorkspace>[1] = []
   const markFirst = () => {
     if (firstTokenMs === undefined) firstTokenMs = performance.now() - started
   }
@@ -235,17 +237,28 @@ async function generate(sessionId: string, participant: Participant, signal: Abo
     const legacyGroupScale = group && session.reasoningEffort && !session.reasoningEffortScale
       ? conversationEffortOptions(session, state.providers).map(({ value }) => value)
       : undefined
-    const result = await adapterFor(provider.kind).stream(
-      {
-        provider,
-        model,
-        reasoningEffort: sessionReasoningEffort(session, reasoningEffortOptions(provider.kind, model).map(({ value }) => value), legacyGroupScale),
-        system: systemPromptFor(session, participant, state.settings, mode, designAttempt),
-        messages: group ? groupTurns(session, participant, history) : chatTurns(history),
-        temperature: state.settings.temperature,
-        maxOutputTokens: state.settings.maxOutputTokens,
-        signal,
-      },
+    const adapter = adapterFor(provider.kind)
+    let request: ChatRequest = {
+      provider,
+      model,
+      reasoningEffort: sessionReasoningEffort(session, reasoningEffortOptions(provider.kind, model).map(({ value }) => value), legacyGroupScale),
+      system: systemPromptFor(session, participant, state.settings, mode, designAttempt),
+      messages: group ? groupTurns(session, participant, history) : chatTurns(history),
+      temperature: state.settings.temperature,
+      maxOutputTokens: state.settings.maxOutputTokens,
+      signal,
+    }
+    let workspaceNotice: string | undefined
+    if (session.workspace && bridge?.workspace && provider.kind !== 'demo') {
+      store().patchMessage(sessionId, messageId, { notice: 'Searching workspace…' })
+      const research = await retrieveWorkspace(adapter, request, session.workspace, history.findLast((m) => m.role === 'user')?.content ?? '', session.systemPrompt)
+      request = research.request
+      evidence = research.evidence
+      workspaceNotice = research.notice
+      store().patchMessage(sessionId, messageId, { notice: undefined })
+    }
+    const result = await adapter.stream(
+      request,
       {
         onText: (delta) => {
           markFirst()
@@ -260,8 +273,9 @@ async function generate(sessionId: string, participant: Participant, signal: Abo
     buffer.flush()
     const totalMs = performance.now() - started
     store().patchMessage(sessionId, messageId, (m) => ({
+      ...citeWorkspace(m.content, result.refusal ? [] : evidence),
       status: result.refusal ? 'refused' : 'done',
-      notice: result.refusal ? refusalNotice(result.refusal) : result.notice ?? (designAttempt ? 'New direction' : undefined),
+      notice: [result.refusal ? refusalNotice(result.refusal) : result.notice ?? (designAttempt ? 'New direction' : undefined), workspaceNotice].filter(Boolean).join(' · ') || undefined,
       metrics: {
         firstTokenMs,
         totalMs,
@@ -274,11 +288,14 @@ async function generate(sessionId: string, participant: Participant, signal: Abo
     buffer.flush()
     const totalMs = performance.now() - started
     if (signal.aborted || isAbortError(err)) {
-      store().patchMessage(sessionId, messageId, { status: 'stopped', metrics: { firstTokenMs, totalMs } })
+      store().patchMessage(sessionId, messageId, (m) => ({
+        ...citeWorkspace(m.content, m.content ? evidence : []), status: 'stopped', notice: undefined, metrics: { firstTokenMs, totalMs },
+      }))
     } else {
       console.error(err)
       store().patchMessage(sessionId, messageId, {
         status: 'error',
+        notice: undefined,
         error: describeError(err),
         errorCode: err instanceof ProviderError ? err.code : undefined,
         metrics: { firstTokenMs, totalMs },

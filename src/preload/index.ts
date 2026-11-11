@@ -4,6 +4,11 @@ import type { ChatGPTAccount, ChatGPTSignInResult, HttpEvent, ParallaxBridge, Sa
 const bridge: ParallaxBridge = {
   runtime: 'desktop',
   signInToCursor: (providerId) => ipcRenderer.invoke('cursor:signIn', providerId),
+  workspace: {
+    choose: (previousId) => ipcRenderer.invoke('workspace:choose', previousId),
+    search: (id, queries, requestId) => ipcRenderer.invoke('workspace:search', id, queries, requestId),
+    cancel: (requestId) => ipcRenderer.invoke('workspace:cancel', requestId),
+  },
   platform: process.platform,
   versions: {
     electron: process.versions.electron ?? '',

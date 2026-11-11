@@ -6,6 +6,7 @@ import type { Message, Participant, Session } from '../lib/types'
 import { useStore } from '../store'
 import { CopyButton, Markdown } from './Markdown'
 import { Avatar, Dialog, IconButton, Segmented, cn } from './ui'
+import { copyWorkspaceReply, WorkspaceSources } from './WorkspaceSources'
 
 interface Entry {
   session: Session
@@ -160,7 +161,7 @@ export function CompareDialog() {
                     >
                       <Star className={cn('size-4', message.starred && 'fill-current text-warn')} />
                     </IconButton>
-                    <CopyButton text={message.content} />
+                    <CopyButton text={copyWorkspaceReply(message)} />
                     <IconButton
                       label="Open this chat"
                       onClick={() => {
@@ -202,6 +203,7 @@ export function CompareDialog() {
                   ) : (
                     <Markdown text={message.content || (message.status === 'streaming' ? '…' : '')} />
                   )}
+                  <WorkspaceSources sources={message.workspaceSources} />
                   {index === 0 && entries.length === 1 && (
                     <p className="mt-4 text-xs text-subtle">Only one reply so far. Broadcast to more chats to compare.</p>
                   )}

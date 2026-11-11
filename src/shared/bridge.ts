@@ -57,10 +57,36 @@ export type ChatGPTSignInResult =
 export const CHATGPT_SIGN_IN_REQUIRED = 'chatgpt_sign_in_required'
 export const CHATGPT_PLAN_NOT_ENABLED = 'chatgpt_plan_not_enabled'
 
+export interface WorkspaceRef {
+  id: string
+  name: string
+}
+
+export interface WorkspaceSource {
+  file: string
+  section: string
+  firstLine: number
+  lastLine: number
+}
+
+export interface WorkspaceExcerpt extends WorkspaceSource {
+  text: string
+}
+
+export interface WorkspaceSearchResult {
+  excerpts: WorkspaceExcerpt[]
+  limited: boolean
+}
+
 export interface ParallaxBridge {
   /** desktop = the Electron app; local = the web app served by `npm run serve` on this computer. */
   runtime: 'desktop' | 'local'
   signInToCursor?(providerId: string): Promise<void>
+  workspace?: {
+    choose(previousId?: string): Promise<WorkspaceRef | undefined>
+    search(id: string, queries: string[], requestId: string): Promise<WorkspaceSearchResult>
+    cancel(requestId: string): Promise<void>
+  }
   platform: string
   versions: { electron: string; chrome: string; node: string }
   keys: {

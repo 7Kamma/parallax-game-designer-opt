@@ -7,6 +7,7 @@ import { conversationEffortOptions, sessionReasoningEffort, widestEffortScale } 
 import type { Session } from '../lib/types'
 import { modelLabel, useFeatures, useStore } from '../store'
 import { ReasoningEffortSelect } from './ReasoningEffortSelect'
+import { WorkspaceSelect } from './WorkspaceSelect'
 import { Dot, cn } from './ui'
 
 function paneLabel(session: Session, providers: ReturnType<typeof useStore.getState>['providers']): string {
@@ -44,6 +45,8 @@ export function Composer() {
   const focused = focusedPane && panes.includes(focusedPane) ? focusedPane : panes[0]
   const targets = broadcasting ? panes.filter((id) => !excluded[id]) : focused ? [focused] : []
   const busy = targets.filter((id) => running[id])
+  const workspaces = targets.map((id) => sessions[id]?.workspace)
+  const mixedWorkspaces = workspaces.some((workspace) => workspace?.id !== workspaces[0]?.id)
   const blocked = targets.map((id) => whyBlocked(sessions[id])).find(Boolean) ?? null
   const groupTargets = targets.filter((id) => {
     const s = sessions[id]
@@ -145,8 +148,16 @@ export function Composer() {
           className="block max-h-[260px] w-full resize-none bg-transparent px-3 py-2 text-[15px] leading-relaxed outline-none placeholder:text-subtle"
         />
         <div className="flex items-center justify-between gap-2 pl-2">
-          <div className="min-w-0 truncate text-xs text-subtle">
-            {blocked ?? (busy.length ? 'Generating… press Esc to stop' : sendOnEnter ? 'Enter to send, Shift+Enter for a new line' : 'Ctrl+Enter to send')}
+          <div className="flex min-w-0 items-center gap-2">
+            <WorkspaceSelect
+              value={mixedWorkspaces ? undefined : workspaces[0]}
+              mixed={mixedWorkspaces}
+              disabled={!targets.length || busy.length > 0}
+              onChange={(workspace) => targets.forEach((id) => updateSession(id, { workspace }))}
+            />
+            <div className="min-w-0 truncate text-xs text-subtle">
+              {blocked ?? (busy.length ? 'Generating… press Esc to stop' : sendOnEnter ? 'Enter to send, Shift+Enter for a new line' : 'Ctrl+Enter to send')}
+            </div>
           </div>
           <div className="flex items-center gap-1.5">
             {usesPlan && (
@@ -175,7 +186,7 @@ export function Composer() {
             <button
               type="button"
               disabled={!canExplore}
-              title="Try a fresh approach using only your brief and messages. Sends any text in the input box."
+              title="Try a fresh approach without earlier model replies. Sends any text in the input box."
               onClick={() => {
                 sendPrompt(text, targets, { newDesignDirection: true })
                 setText('')

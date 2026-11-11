@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Check } from 'lucide-react'
+import type { WorkspaceRef } from '../../../shared/bridge'
 import { sendPrompt } from '../lib/engine'
 import { GAME_DESIGN_BRIEF } from '../lib/prompt'
 import { mapReasoningEffort, reasoningEffortOptions, widestEffortScale } from '../lib/reasoningEffort'
@@ -7,6 +8,7 @@ import type { ModelRef } from '../lib/types'
 import { MAX_PANES, useStore } from '../store'
 import { useModelGroups } from './ModelPicker'
 import { ReasoningEffortSelect } from './ReasoningEffortSelect'
+import { WorkspaceSelect } from './WorkspaceSelect'
 import { Button, Dialog, cn, inputClass } from './ui'
 
 const key = (ref: ModelRef) => `${ref.providerId}::${ref.modelId}`
@@ -22,6 +24,7 @@ export function NewCompareDialog() {
   const [selected, setSelected] = useState<ModelRef[]>([])
   const [prompt, setPrompt] = useState('')
   const [brief, setBrief] = useState('')
+  const [workspace, setWorkspace] = useState<WorkspaceRef>()
   const [effort, setEffort] = useState<{ value: string; scale: string[] }>()
   const effortOptions = widestEffortScale(selected.map((ref) => {
     const group = ready.find(({ provider }) => provider.id === ref.providerId)
@@ -36,6 +39,7 @@ export function NewCompareDialog() {
     setSelected([])
     setPrompt('')
     setBrief('')
+    setWorkspace(undefined)
     setEffort(undefined)
   }
 
@@ -52,9 +56,10 @@ export function NewCompareDialog() {
   const start = () => {
     const ids = selected.map((ref) => createSession({ kind: 'chat', models: [ref], placement: 'none' }))
     const sharedBrief = brief.trim()
-    if (sharedBrief || (effort && effortScale.length)) {
+    if (workspace || sharedBrief || (effort && effortScale.length)) {
       for (const id of ids) updateSession(id, {
         systemPrompt: sharedBrief || undefined,
+        workspace,
         reasoningEffort: effort && effortScale.length ? shownEffort : undefined,
         reasoningEffortScale: effort && effortScale.length ? effortScale : undefined,
       })
@@ -136,6 +141,7 @@ export function NewCompareDialog() {
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted">{selected.length} selected</span>
           <div className="flex gap-2">
+            <WorkspaceSelect value={workspace} onChange={setWorkspace} />
             <ReasoningEffortSelect options={effortOptions} value={shownEffort} onChange={(value) => setEffort({ value, scale: effortScale })} />
             <Button variant="ghost" onClick={close}>
               Cancel

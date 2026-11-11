@@ -1,3 +1,5 @@
+import type { WorkspaceRef, WorkspaceSource } from '../../../shared/bridge'
+
 /** chatgpt = Sign in with ChatGPT (the user's ChatGPT plan pays, through the Responses API). */
 export type ProviderKind = 'anthropic' | 'openai' | 'chatgpt' | 'demo'
 
@@ -89,6 +91,7 @@ export interface Message {
   errorCode?: string
   /** Informational note shown under the message (truncation, fallback...). */
   notice?: string
+  workspaceSources?: Array<WorkspaceSource & { citation?: number }>
   reasoning?: string
   metrics?: MessageMetrics
   /** A broadcast prompt and every reply to it share this id across sessions. */
@@ -106,6 +109,7 @@ export interface Session {
   participants: Participant[]
   messages: Message[]
   systemPrompt?: string
+  workspace?: WorkspaceRef
   reasoningEffort?: string
   reasoningEffortScale?: string[]
   createdAt: number

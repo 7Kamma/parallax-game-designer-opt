@@ -4,6 +4,7 @@ import {
   BrowserWindow,
   Menu,
   app,
+  dialog,
   ipcMain,
   nativeTheme,
   net,
@@ -17,6 +18,7 @@ import type { HttpEvent, HttpRequest } from '../shared/bridge'
 import { KeyStore, prepareUpstream } from './backend'
 import { cursorResponse, signInToCursor } from './cursor'
 import { ChatGPTAuth, ChatGPTError, OPENAI_API_BASE, OPENAI_ISSUER, type Sealed } from './chatgpt'
+import { WorkspaceFolders } from './workspace'
 
 const devServerUrl = process.env.VITE_DEV_SERVER_URL
 const REPO_URL = 'https://github.com/Houchen181/parallax'
@@ -30,6 +32,8 @@ if (process.env.PARALLAX_USER_DATA) app.setPath('userData', process.env.PARALLAX
 // ---------------------------------------------------------------------------
 
 let keys: KeyStore
+let workspaceFolders: WorkspaceFolders
+const workspaceSearches = new Map<string, AbortController>()
 
 function seal(plain: string): Sealed {
   if (safeStorage.isEncryptionAvailable()) {
@@ -93,6 +97,32 @@ function registerIpc() {
   handle('cursor:signIn', (_event, providerId: string) => {
     if (!safeStorage.isEncryptionAvailable()) throw new Error('Encrypted credential storage is unavailable.')
     return signInToCursor(providerId, keys, (url) => shell.openExternal(url))
+  })
+
+  handle('workspace:choose', async (event, previousId?: string) => {
+    const parent = BrowserWindow.fromWebContents(event.sender)
+    const options = {
+      title: 'Choose workspace folder',
+      properties: ['openDirectory' as const],
+      defaultPath: workspaceFolders.path(previousId),
+    }
+    const result = await (parent ? dialog.showOpenDialog(parent, options) : dialog.showOpenDialog(options))
+    if (!result.canceled && result.filePaths[0]) return workspaceFolders.add(result.filePaths[0])
+  })
+  handle('workspace:search', async (event, id: string, queries: unknown, requestId: string) => {
+    if (typeof requestId !== 'string' || requestId.length > 64) throw new Error('Invalid workspace request id.')
+    const key = event.sender.id + '/' + requestId
+    if (workspaceSearches.has(key)) throw new Error('Workspace search is already running.')
+    const controller = new AbortController()
+    workspaceSearches.set(key, controller)
+    try {
+      return await workspaceFolders.search(id, queries, controller.signal)
+    } finally {
+      workspaceSearches.delete(key)
+    }
+  })
+  handle('workspace:cancel', (event, requestId: string) => {
+    if (typeof requestId === 'string') workspaceSearches.get(event.sender.id + '/' + requestId)?.abort()
   })
 
   handle('http:start', (event, request: HttpRequest) => {
@@ -301,6 +331,8 @@ if (!app.requestSingleInstanceLock()) {
     app.setAppUserModelId('io.github.houchen181.parallax')
     keys = new KeyStore(join(app.getPath('userData'), 'api-keys.json'), seal, unseal)
     await keys.load()
+    workspaceFolders = new WorkspaceFolders(join(app.getPath('userData'), 'workspaces.json'))
+    await workspaceFolders.load()
     chatgpt = createChatGPTAuth()
     await chatgpt.load()
     registerIpc()

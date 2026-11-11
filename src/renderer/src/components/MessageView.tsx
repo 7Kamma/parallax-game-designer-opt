@@ -8,6 +8,7 @@ import type { Message, Participant } from '../lib/types'
 import { useFeatures, useStore } from '../store'
 import { CopyButton, Markdown } from './Markdown'
 import { Avatar, Button, IconButton, cn } from './ui'
+import { copyWorkspaceReply, WorkspaceSources } from './WorkspaceSources'
 
 function TypingDots() {
   return (
@@ -165,6 +166,7 @@ function AssistantMessage({
         ) : streaming ? (
           !message.reasoning && <TypingDots />
         ) : null}
+        <WorkspaceSources sources={message.workspaceSources} />
 
         {message.status === 'error' && (
           <div className="mt-2 flex flex-col gap-2 rounded-xl border border-danger/30 bg-danger-soft px-3 py-2.5 text-sm text-danger">
@@ -209,7 +211,7 @@ function AssistantMessage({
         {!streaming && (
           <div className="mt-1 flex min-h-7 flex-wrap items-center gap-x-1 gap-y-0.5">
             <span className="flex items-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-              {message.content && <CopyButton text={message.content} />}
+              {message.content && <CopyButton text={copyWorkspaceReply(message)} />}
               {canRegenerate && message.status !== 'error' && (
                 <IconButton label="Regenerate" className="size-7" onClick={() => regenerate(sessionId, message.id)}>
                   <RotateCcw className="size-3.5" />
