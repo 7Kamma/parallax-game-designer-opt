@@ -15,40 +15,11 @@ export const GAME_DESIGN_BRIEF = [
   'Playtest evidence and open questions',
 ].join('\n')
 
-const GAME_DESIGN_FOCUSES = [
-  {
-    label: 'Player experience',
-    guidance: 'Start from what the target player should feel. Walk through a concrete play moment: the cue they notice, their options, the decision and its feedback. Explain how your rule changes that experience.',
-  },
-  {
-    label: 'Systems and balance',
-    guidance: 'Trace the rule through incentives and repeated play. Look for a dominant strategy, a reward loop or an interaction with an existing system that could defeat the intended choice. Identify what can actually be tuned.',
-  },
-  {
-    label: 'Scope and playtesting',
-    guidance: 'Compare reuse of existing rules or assets with the work new content would require. Identify the riskiest prediction and the smallest playable or paper prototype that can disprove it. Say what behavior to watch for.',
-  },
-  {
-    label: 'Learning and readability',
-    guidance: 'Consider how first-time and experienced players would read the same situation. Look for a hidden rule, ambiguous cue or punishment a player cannot diagnose. Propose a way to teach it through play.',
-  },
-  {
-    label: 'Content and pacing',
-    guidance: 'Consider where the idea fits in the sequence of play. Look at setup, escalation, payoff and repetition. Show what one encounter, level or story beat would do differently.',
-  },
-]
-
-export function gameDesignFocusFor(session: Session, participant: Participant) {
-  if (session.kind !== 'group' || participant.systemPrompt?.trim()) return undefined
-  const index = session.participants.findIndex((entry) => entry.id === participant.id)
-  return index < 0 ? undefined : GAME_DESIGN_FOCUSES[index % GAME_DESIGN_FOCUSES.length]
-}
-
 const GAME_DESIGN_BY_MODE = {
   single: 'For game design consultation, answer the decision at hand. If the user is diagnosing a problem, separate the symptom, the likely rule or incentive causing it, and the evidence needed to distinguish causes. If proposing a change, trace rule to player behavior to experience and compare the most meaningful alternative. When a recommendation depends on a prediction, give the smallest test and the observation that would make you change it.',
   comparison: 'For side-by-side game design comparison, develop your answer independently. Unless the human requests a different format, make the options comparable using the same four points: rule change from baseline, predicted player behavior and experience, biggest cost or failure risk, and a small test with an observation that would change the recommendation. Clearly identify any assumption you had to supply.',
   opening: 'For an opening game design round, give an independent proposal. State the target experience and the concrete change from the current design or a simple baseline. Explain how the rule changes player behavior and why that behavior serves the target experience. Name a meaningful alternative and the trade-off when the decision warrants it.',
-  discussion: 'For a game design discussion, compare concrete proposals against the same target experience, baseline and constraints. Surface any difference in the assumed player or play conditions before judging the trade-off. Identify the specific player behavior or implementation cost the proposals predict differently. When asked to converge, recommend an option, retain the strongest unresolved objection, and propose the smallest test with a shared baseline and an observation that would change the choice.',
+  discussion: 'For a game design discussion, compare concrete proposals against the same target experience, baseline and constraints. Surface any difference in the assumed player or play conditions before judging the trade-off. Give your own judgment and identify the player behavior, design assumption or implementation cost that could change it. When asked to converge, recommend an option, retain the strongest unresolved objection, and propose the smallest test with a shared baseline and an observation that would change the choice.',
 } as const
 
 const GAME_DESIGN_DIRECTIONS = [
@@ -74,11 +45,9 @@ export function systemPromptFor(
     parts.push(
       'Use the following guidance when the human is working on game design. Follow their latest request, design brief and confirmed decisions. Treat suggestions as proposals, and distinguish observations, predictions and assumptions. Reply in the human’s language unless asked otherwise.',
       GAME_DESIGN_BY_MODE[mode],
-      'For open-ended ideation, explore meaningfully different mechanisms before choosing what to present. A promising idea changes what the player can notice, choose or risk. Give enough of a play example to show the difference. Scale the breadth to what the human asked.',
+      'For open-ended ideation, explore mechanisms that change different player decisions before settling on a recommendation. Consider a less obvious mechanism that could meet the same goal. Then give your own best proposal, show how it plays in a concrete moment, and explain the trade-off that matters most. Scale the breadth to what the human asked.',
       'Use the checks relevant to the question. For combat or a mechanic, examine cues, decision windows, counterplay and failure recovery. For progression or an economy, trace sources, sinks, time to rewards and repeatable incentives. For a level, examine what the player learns, where the challenge tests it and how variants change the decision. For narrative or UI, examine what players know at the decision point and how presentation changes their reading. Choose only the checks that affect the decision and keep the reply focused.',
     )
-    const focus = gameDesignFocusFor(session, participant)
-    if (focus) parts.push(`Your default game design focus is ${focus.label}. ${focus.guidance} Use it where it helps answer the question.`)
     if (designAttempt) {
       parts.push(
         'The human chose to explore a fresh direction. Earlier model answers are omitted. Reconstruct the design question from the human’s messages, respecting their latest corrections and confirmed constraints. If an essential reference is missing, state the assumption you need to make.',

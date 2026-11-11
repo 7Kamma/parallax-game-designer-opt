@@ -94,19 +94,19 @@ describe('systemPromptFor', () => {
     expect(opening).toContain('Keep encounters under 2 minutes.\n\nConsider accessibility.')
     expect(opening).toContain('give an independent proposal')
     expect(opening).toContain('sources, sinks, time to rewards')
-    expect(opening).not.toContain('Your default game design focus')
     const discussion = systemPromptFor(session, model, settings, 'discussion')
     expect(discussion).toContain('same target experience, baseline and constraints')
     expect(discussion).toContain('an observation that would change the choice')
     expect(systemPromptFor({ ...session, kind: 'chat' }, model, settings)).toBe('Keep encounters under 2 minutes.\n\nConsider accessibility.')
   })
 
-  it('assigns distinct default game design focuses by roster position', () => {
-    const third = { ...bob, id: 'c', name: 'Grok' }
-    const session = { ...group([]), participants: [alice, bob, third] }
-    expect(systemPromptFor(session, third, settings, 'opening')).toContain('game design focus is Scope and playtesting')
-    expect(systemPromptFor(session, alice, settings, 'opening')).toContain('game design focus is Player experience')
-    expect(systemPromptFor(session, bob, settings, 'discussion')).toContain('game design focus is Systems and balance')
+  it.each(['opening', 'discussion'] as const)('gives every group participant the same %s guidance', (mode) => {
+    const session = group([])
+    const first = systemPromptFor(session, alice, settings, mode)!
+    const second = systemPromptFor(session, bob, settings, mode)!
+    expect(first).toContain('explore mechanisms that change different player decisions')
+    // The first paragraph identifies the speaker and the roster.
+    expect(first.split('\n\n').slice(1)).toEqual(second.split('\n\n').slice(1))
   })
 
   it('deepens single-model advice and gives all comparison panes the same design criteria', () => {
@@ -116,6 +116,8 @@ describe('systemPromptFor', () => {
     expect(single).toContain('Target short mobile sessions.')
     const comparison = systemPromptFor(session, alice, settings, 'comparison')
     expect(comparison).toContain('the same four points')
+    expect(comparison).toContain('explore mechanisms that change different player decisions')
+    expect(single).toContain('explore mechanisms that change different player decisions')
     expect(comparison).toBe(systemPromptFor({ ...session, participants: [bob] }, bob, settings, 'comparison'))
   })
 

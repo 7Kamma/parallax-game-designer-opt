@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, SlidersHorizontal, Trash2, VolumeX, Volume2, Replace } from 'lucide-react'
-import { gameDesignFocusFor, handleFor } from '../lib/prompt'
+import { handleFor } from '../lib/prompt'
 import type { Participant, Session, SpeakingOrder } from '../lib/types'
 import { modelLabel, useStore } from '../store'
 import { ModelPicker } from './ModelPicker'
@@ -21,7 +21,6 @@ function ParticipantEditor({
   const remove = useStore((s) => s.removeParticipant)
   const provider = useStore((s) => s.providers.find((p) => p.id === participant.providerId))
   const [picker, setPicker] = useState<HTMLElement | null>(null)
-  const focus = gameDesignFocusFor(session, participant)
 
   return (
     <Popover anchor={anchor} open onClose={onClose} className="w-80 p-3">
@@ -55,7 +54,7 @@ function ParticipantEditor({
           <span className="mb-1 block text-xs font-medium text-muted">Persona or extra instructions</span>
           <textarea
             className={cn(inputClass, 'min-h-20 resize-y')}
-            placeholder={focus ? `Default game design focus: ${focus.label}. Enter a persona to replace it.` : 'Enter a persona or extra instructions.'}
+            placeholder="Enter a persona or extra instructions."
             value={participant.systemPrompt ?? ''}
             onChange={(e) => update(session.id, participant.id, { systemPrompt: e.target.value })}
           />
