@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { sendPrompt } from '../lib/engine'
+import { GAME_DESIGN_BRIEF } from '../lib/prompt'
+import { mapReasoningEffort, reasoningEffortOptions, widestEffortScale } from '../lib/reasoningEffort'
 import type { ModelRef } from '../lib/types'
 import { MAX_PANES, useStore } from '../store'
 import { useModelGroups } from './ModelPicker'
+import { ReasoningEffortSelect } from './ReasoningEffortSelect'
 import { Button, Dialog, cn, inputClass } from './ui'
 
 const key = (ref: ModelRef) => `${ref.providerId}::${ref.modelId}`
@@ -12,16 +15,28 @@ export function NewCompareDialog() {
   const open = useStore((s) => s.newCompareOpen)
   const setOpen = useStore((s) => s.setNewCompareOpen)
   const createSession = useStore((s) => s.createSession)
+  const updateSession = useStore((s) => s.updateSession)
   const setPanes = useStore((s) => s.setPanes)
   const openSettings = useStore((s) => s.openSettings)
   const { ready } = useModelGroups()
   const [selected, setSelected] = useState<ModelRef[]>([])
   const [prompt, setPrompt] = useState('')
+  const [brief, setBrief] = useState('')
+  const [effort, setEffort] = useState<{ value: string; scale: string[] }>()
+  const effortOptions = widestEffortScale(selected.map((ref) => {
+    const group = ready.find(({ provider }) => provider.id === ref.providerId)
+    const model = group?.models.find((entry) => entry.id === ref.modelId)
+    return group && model ? reasoningEffortOptions(group.provider.kind, model) : []
+  }))
+  const effortScale = effortOptions.map(({ value }) => value)
+  const shownEffort = mapReasoningEffort(effort?.value, effort?.scale, effortScale) ?? ''
 
   const close = () => {
     setOpen(false)
     setSelected([])
     setPrompt('')
+    setBrief('')
+    setEffort(undefined)
   }
 
   const toggle = (ref: ModelRef) => {
@@ -36,6 +51,14 @@ export function NewCompareDialog() {
 
   const start = () => {
     const ids = selected.map((ref) => createSession({ kind: 'chat', models: [ref], placement: 'none' }))
+    const sharedBrief = brief.trim()
+    if (sharedBrief || (effort && effortScale.length)) {
+      for (const id of ids) updateSession(id, {
+        systemPrompt: sharedBrief || undefined,
+        reasoningEffort: effort && effortScale.length ? shownEffort : undefined,
+        reasoningEffortScale: effort && effortScale.length ? effortScale : undefined,
+      })
+    }
     setPanes(ids)
     if (prompt.trim()) sendPrompt(prompt, ids)
     close()
@@ -43,12 +66,12 @@ export function NewCompareDialog() {
 
   return (
     <Dialog open={open} onClose={close} title="Compare models side by side" className="max-w-2xl">
-      <div className="flex min-h-0 flex-col gap-4 p-5">
+      <div className="flex min-h-0 flex-col gap-4 overflow-y-auto p-5">
         <p className="text-sm text-muted">
           Each model gets its own chat in a separate pane. Whatever you type goes to all of them, and you can compare the replies
           afterwards. Pick up to {MAX_PANES}.
         </p>
-        <div className="max-h-[45vh] space-y-3 overflow-y-auto rounded-xl border border-line p-2">
+        <div className="max-h-[45vh] shrink-0 space-y-3 overflow-y-auto rounded-xl border border-line p-2">
           {ready.length === 0 && (
             <div className="p-4 text-center text-sm text-muted">
               No models available.{' '}
@@ -90,6 +113,17 @@ export function NewCompareDialog() {
             </div>
           ))}
         </div>
+        <details className="shrink-0 space-y-2">
+          <summary className="cursor-pointer text-xs font-medium text-muted">Shared design brief (optional)</summary>
+          <textarea
+            aria-label="Shared design brief"
+            value={brief}
+            onChange={(e) => setBrief(e.target.value)}
+            placeholder={GAME_DESIGN_BRIEF}
+            className={cn(inputClass, 'min-h-24 resize-y')}
+          />
+          {!brief.trim() && <Button size="sm" onClick={() => setBrief(GAME_DESIGN_BRIEF)}>Use brief template</Button>}
+        </details>
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted">First message (optional)</span>
           <textarea
@@ -102,6 +136,7 @@ export function NewCompareDialog() {
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted">{selected.length} selected</span>
           <div className="flex gap-2">
+            <ReasoningEffortSelect options={effortOptions} value={shownEffort} onChange={(value) => setEffort({ value, scale: effortScale })} />
             <Button variant="ghost" onClick={close}>
               Cancel
             </Button>

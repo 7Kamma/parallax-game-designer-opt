@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ExternalLink, KeyRound, LoaderCircle, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { removeKey, saveKey } from '../../lib/keys'
-import { hasBackend, openExternal, runtime } from '../../lib/platform'
+import { bridge, hasBackend, openExternal, runtime } from '../../lib/platform'
 import { adapterFor } from '../../lib/providers'
 import { DEMO_PROVIDER_ID, availablePresets, presetFor } from '../../lib/providers/presets'
 import type { Effort, MaxTokensParam, ProviderConfig } from '../../lib/types'
@@ -28,6 +28,7 @@ function ProviderEditor({ provider }: { provider: ProviderConfig }) {
   const setProviderModels = useStore((s) => s.setProviderModels)
   const updateFeatures = useStore((s) => s.updateFeatures)
   const preset = presetFor(provider)
+  const cursorSignIn = preset?.id === 'cursor-sdk' ? bridge?.signInToCursor : undefined
   const hasKey = provider.id in savedKeys
   const lockedOrigin = savedKeys[provider.id]
   const [baseUrl, setBaseUrl] = useState(provider.baseUrl)
@@ -112,6 +113,22 @@ function ProviderEditor({ provider }: { provider: ProviderConfig }) {
     setStatus({ kind: 'info', text: 'Key removed.' })
   }
 
+  const signInWithCursor = async () => {
+    if (!cursorSignIn || !preset) return
+    setBusy('key')
+    setStatus({ kind: 'info', text: '请在浏览器中完成 Cursor 授权。' })
+    try {
+      await cursorSignIn(provider.id)
+      if (provider.baseUrl !== preset.baseUrl) updateProvider(provider.id, { baseUrl: preset.baseUrl })
+      await refreshKeys()
+      await fetchModels({ ...provider, baseUrl: preset.baseUrl })
+    } catch (err) {
+      setStatus({ kind: 'error', text: err instanceof Error ? err.message : String(err) })
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const currentOrigin = originOf(provider.baseUrl)
   const keyLockedElsewhere = hasBackend && hasKey && lockedOrigin && currentOrigin && lockedOrigin !== currentOrigin
   const firstParty = provider.kind === 'anthropic' && provider.baseUrl === 'https://api.anthropic.com'
@@ -149,7 +166,7 @@ function ProviderEditor({ provider }: { provider: ProviderConfig }) {
         />
       )}
 
-      <div className="space-y-1.5">
+      {!cursorSignIn && <div className="space-y-1.5">
         <div className="text-sm font-medium">Base URL</div>
         <input
           value={baseUrl}
@@ -164,9 +181,15 @@ function ProviderEditor({ provider }: { provider: ProviderConfig }) {
             The saved key is locked to {lockedOrigin}. Save the key again to use it with this URL.
           </p>
         )}
-      </div>
+      </div>}
 
       <div className="space-y-1.5">
+        {cursorSignIn && (
+          <Button variant="primary" onClick={() => void signInWithCursor()} disabled={busy !== null}>
+            {busy === 'key' && <LoaderCircle className="size-4 animate-spin" />}
+            使用 Cursor 登录
+          </Button>
+        )}
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium">
             API key{' '}
@@ -189,7 +212,7 @@ function ProviderEditor({ provider }: { provider: ProviderConfig }) {
               <span className="flex-1 text-muted">
                 Saved {runtime === 'desktop' ? '(encrypted on this computer)' : runtime === 'local' ? '(by Parallax on this computer)' : '(in this browser)'}
               </span>
-              <Button size="sm" variant="ghost" onClick={() => void forgetKey()}>
+              <Button size="sm" variant="ghost" onClick={() => void forgetKey()} disabled={busy !== null}>
                 Remove
               </Button>
             </div>

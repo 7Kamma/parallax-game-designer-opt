@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import { startDemo } from '../lib/engine'
+import { GAME_DESIGN_BRIEF } from '../lib/prompt'
 import type { Session } from '../lib/types'
 import { modelLabel, providerReady, useFeatures, useStore } from '../store'
 import { MessageView } from './MessageView'
@@ -64,21 +65,24 @@ function InstructionsDialog({ session, onClose }: { session: Session; onClose: (
   const fallback = useStore((s) => s.settings.defaultSystemPrompt)
   const [value, setValue] = useState(session.systemPrompt ?? '')
   return (
-    <Dialog open onClose={onClose} title="Instructions for this chat" className="max-w-xl">
+    <Dialog open onClose={onClose} title="Instructions / design brief" className="max-w-xl">
       <div className="space-y-3 p-5">
         <p className="text-sm text-muted">
-          A system prompt sent with every request in this chat.
-          {session.kind === 'group' && ' Each model in the group also gets its own persona, if you set one.'}
+          Record the target experience, confirmed decisions and constraints here. Ask the current design question in the chat.
         </p>
         <textarea
           autoFocus
+          aria-label="Instructions / design brief"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={fallback || 'e.g. Answer like a patient tutor. Use short paragraphs.'}
+          placeholder={fallback || GAME_DESIGN_BRIEF}
           className={cn(inputClass, 'min-h-40 resize-y')}
         />
         {!value && fallback && <p className="text-xs text-subtle">Leave empty to use the default from Settings → General.</p>}
         <div className="flex justify-end gap-2">
+          {!value.trim() && (
+            <Button className="mr-auto" onClick={() => setValue(GAME_DESIGN_BRIEF)}>Use brief template</Button>
+          )}
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
@@ -113,7 +117,7 @@ function PaneMenu({ session, multi, onRename }: { session: Session; multi: boole
           Rename
         </MenuItem>
         <MenuItem icon={<FileText className="size-3.5" />} onClick={() => (close(), setInstructions(true))}>
-          Instructions{session.systemPrompt ? ' (set)' : ''}
+          Instructions / design brief{session.systemPrompt ? ' (set)' : ''}
         </MenuItem>
         {multi && (
           <MenuItem icon={<Maximize2 className="size-3.5" />} onClick={() => (close(), setPanes([session.id]))}>
@@ -153,7 +157,7 @@ function EmptyState({ session, compact }: { session: Session; compact: boolean }
         <p className="max-w-md text-sm leading-relaxed text-muted">
           {count < 2
             ? 'Add at least two models with the + button above, then say something to get them talking.'
-            : `${count} models are here. Send a message and each one replies in turn, reading what the others said.`}
+            : `${count} models are here. Send a message for independent takes, then continue the discussion.`}
         </p>
       </div>
     )

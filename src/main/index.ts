@@ -15,6 +15,7 @@ import {
 } from 'electron'
 import type { HttpEvent, HttpRequest } from '../shared/bridge'
 import { KeyStore, prepareUpstream } from './backend'
+import { cursorResponse, signInToCursor } from './cursor'
 import { ChatGPTAuth, ChatGPTError, OPENAI_API_BASE, OPENAI_ISSUER, type Sealed } from './chatgpt'
 
 const devServerUrl = process.env.VITE_DEV_SERVER_URL
@@ -89,6 +90,10 @@ function registerIpc() {
   handle('keys:list', () => keys.list())
   handle('keys:set', (_event, providerId: string, key: string, baseUrl: string) => keys.set(providerId, key, baseUrl))
   handle('keys:remove', (_event, providerId: string) => keys.remove(providerId))
+  handle('cursor:signIn', (_event, providerId: string) => {
+    if (!safeStorage.isEncryptionAvailable()) throw new Error('Encrypted credential storage is unavailable.')
+    return signInToCursor(providerId, keys, (url) => shell.openExternal(url))
+  })
 
   handle('http:start', (event, request: HttpRequest) => {
     const controller = new AbortController()
@@ -131,8 +136,11 @@ async function runRequest(sender: WebContents, request: HttpRequest, controller:
     if (!sender.isDestroyed()) sender.send('http:event', event)
   }
   try {
-    const { url, init } = await prepareUpstream(request, keys, chatgpt)
-    const response = await net.fetch(url, { ...init, signal: controller.signal })
+    let response = await cursorResponse(request, keys, controller.signal)
+    if (!response) {
+      const { url, init } = await prepareUpstream(request, keys, chatgpt)
+      response = await net.fetch(url, { ...init, signal: controller.signal })
+    }
     const responseHeaders: Record<string, string> = {}
     response.headers.forEach((value, name) => {
       responseHeaders[name] = value

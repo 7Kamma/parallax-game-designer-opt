@@ -409,10 +409,12 @@ export const useStore = create<AppState>()(
         const state = get()
         const session = state.sessions[sessionId]
         if (!session) return
-        const participant = makeParticipant(state.providers, ref, [])
-        get().updateSession(sessionId, { participants: [participant] })
+        const previous = session.participants[0]
+        const sameModel = previous?.providerId === ref.providerId && previous.modelId === ref.modelId
+        const participant = sameModel ? { ...previous } : makeParticipant(state.providers, ref, [])
+        get().updateSession(sessionId, { participants: [participant], reasoningEffort: session.reasoningEffort ?? previous?.reasoningEffort })
         // New chats start with the model picked most recently (demo models excepted).
-        if (ref.providerId !== DEMO_PROVIDER_ID) set((s) => ({ settings: { ...s.settings, defaultModel: ref } }))
+        if (ref.providerId !== DEMO_PROVIDER_ID) set((s) => ({ settings: { ...s.settings, defaultModel: { providerId: ref.providerId, modelId: ref.modelId } } }))
       },
 
       addParticipant(sessionId, ref) {

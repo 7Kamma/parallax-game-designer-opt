@@ -62,10 +62,11 @@ export function ModelList({ provider }: { provider: ProviderConfig }) {
       <div className="max-h-64 overflow-y-auto rounded-xl border border-line">
         {provider.models.length === 0 && <p className="px-3 py-4 text-center text-[13px] text-muted">No models yet. {emptyHint}</p>}
         {shown.map((model) => (
-          <label key={model.id} className="flex items-center gap-3 border-b border-line px-3 py-1.5 last:border-b-0 hover:bg-hover">
+          <div key={model.id} className="flex items-center gap-3 border-b border-line px-3 py-1.5 last:border-b-0 hover:bg-hover">
             <input
               type="checkbox"
               checked={!model.hidden}
+              aria-label={`Show ${model.label ?? model.id}`}
               onChange={(e) => setHidden(new Set([model.id]), !e.target.checked)}
               className="size-4 accent-[var(--accent)]"
             />
@@ -77,8 +78,7 @@ export function ModelList({ provider }: { provider: ProviderConfig }) {
               <button
                 type="button"
                 aria-label={`Remove ${model.id}`}
-                onClick={(e) => {
-                  e.preventDefault()
+                onClick={() => {
                   updateProvider(provider.id, { models: provider.models.filter((m) => m.id !== model.id) })
                 }}
                 className="rounded p-1 text-subtle hover:bg-hover hover:text-fg"
@@ -86,7 +86,7 @@ export function ModelList({ provider }: { provider: ProviderConfig }) {
                 <X className="size-3.5" />
               </button>
             )}
-          </label>
+          </div>
         ))}
       </div>
       {provider.kind !== 'chatgpt' && (

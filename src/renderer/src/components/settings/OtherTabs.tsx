@@ -55,7 +55,7 @@ export function FeaturesTab() {
       </SettingRow>
       <SettingRow
         title="Group chats"
-        description="Put several models in one chat. They take turns, see what the others said, and can answer each other."
+        description="Put several models in one chat. They give independent first answers and can discuss them in later rounds."
       >
         <Switch label="Group chats" checked={features.groupChat} onChange={(v) => updateFeatures({ groupChat: v })} />
       </SettingRow>
@@ -74,7 +74,7 @@ export function GroupTab() {
     <div className="p-6">
       {!enabled && <p className="mb-3 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn">Group chats are turned off in Features.</p>}
       <p className="mb-2 text-sm text-muted">Defaults for group chats. Each chat can override rounds and order from its options button.</p>
-      <SettingRow title="Rounds after each message" description="How many times each model speaks after you send something. With 2 or more, the models reply to each other.">
+      <SettingRow title="Rounds after each message" description="The first round collects independent answers. Each additional round lets the models respond to the discussion.">
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (
             <button
@@ -102,9 +102,8 @@ export function GroupTab() {
         <Switch label="Announce participants" checked={group.announceRoster} onChange={(v) => update({ announceRoster: v })} />
       </SettingRow>
       <div className="mt-4 rounded-xl border border-line bg-sidebar px-4 py-3 text-[13px] leading-relaxed text-muted">
-        Every model sees the whole conversation. Its own earlier replies are sent as its turns, and everything else is labelled with
-        the speaker, like <span className="font-mono">[User]: …</span> or <span className="font-mono">[Claude Opus 5.5]: …</span>.
-        Start a message with <span className="font-mono">@name</span> to hear from one model only.
+        First-round replies share the conversation up to your latest message. Click Continue to discuss the answers, or use{' '}
+        <span className="font-mono">@name</span> to ask a specific model a follow-up.
       </div>
     </div>
   )

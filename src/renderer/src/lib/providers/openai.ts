@@ -17,6 +17,10 @@ function auth(provider: ProviderConfig): AuthSpec | undefined {
   return provider.requiresKey ? { providerId: provider.id, header: 'authorization', prefix: 'Bearer ' } : undefined
 }
 
+function isDeepSeekApi(provider: ProviderConfig): boolean {
+  return /^https:\/\/api\.deepseek\.com(?::443)?(?:\/|$)/i.test(provider.baseUrl)
+}
+
 interface StreamChunk {
   choices?: Array<{
     delta?: { content?: string | null; reasoning_content?: string | null; reasoning?: string | null }
@@ -43,6 +47,14 @@ export const openaiAdapter: ProviderAdapter = {
       ...request.messages.map((m) => ({ role: m.role, content: m.content })),
     ]
     const body: Record<string, unknown> = { model: model.id, messages, stream: true }
+    const effort = model.reasoningEffort
+    if (effort?.options.some((option) => option.value === request.reasoningEffort)) {
+      if (provider.presetId === 'cursor-sdk' && effort.parameterId) {
+        body.reasoningEffort = { id: effort.parameterId, value: request.reasoningEffort }
+      } else if (isDeepSeekApi(provider)) {
+        body.reasoning_effort = request.reasoningEffort
+      }
+    }
     if (request.temperature != null) body.temperature = request.temperature
     const tokensParam = provider.maxTokensParam ?? 'none'
     if (tokensParam !== 'none') body[tokensParam] = request.maxOutputTokens
@@ -119,6 +131,7 @@ export const openaiAdapter: ProviderAdapter = {
     const record = json as { data?: unknown; models?: unknown }
     const items = (Array.isArray(record.data) ? record.data : Array.isArray(record.models) ? record.models : Array.isArray(json) ? json : []) as Array<Record<string, unknown>>
     const filter = provider.modelFilter ? new RegExp(provider.modelFilter, 'i') : null
+    const deepSeek = isDeepSeekApi(provider)
     const seen = new Set<string>()
     const models: ModelInfo[] = []
     for (const item of items) {
@@ -128,7 +141,15 @@ export const openaiAdapter: ProviderAdapter = {
       seen.add(id)
       const name = typeof item.name === 'string' && item.name !== rawId ? item.name : undefined
       const display = typeof item.display_name === 'string' ? item.display_name : name
-      models.push({ id, label: display })
+      let reasoningEffort = provider.presetId === 'cursor-sdk' ? item.reasoningEffort as ModelInfo['reasoningEffort'] : undefined
+      if (deepSeek) {
+        const levels = (item.effort as { supported_levels?: unknown } | undefined)?.supported_levels
+        if (Array.isArray(levels)) {
+          const options = levels.filter((value): value is string => typeof value === 'string' && !!value).map((value) => ({ value }))
+          if (options.length) reasoningEffort = { options }
+        }
+      }
+      models.push({ id, label: display, reasoningEffort })
     }
     return models.sort((a, b) => a.id.localeCompare(b.id))
   },

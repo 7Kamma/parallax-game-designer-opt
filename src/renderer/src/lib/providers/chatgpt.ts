@@ -141,14 +141,18 @@ export const chatgptAdapter: ProviderAdapter = {
     }
     if (request.system) body.instructions = request.system
     const wantSummary = request.provider.thinking !== false && !noReasoningSummary.has(model)
-    if (wantSummary) body.reasoning = { summary: 'auto' }
+    const effort = request.reasoningEffort
+    const selectedEffort = request.model.reasoningEffort?.options.some((option) => option.value === effort) ? effort : undefined
+    if (wantSummary || selectedEffort) body.reasoning = { summary: wantSummary ? 'auto' : undefined, effort: selectedEffort }
 
     let response = await post(url, body, request)
     if (!response.ok && response.status === 400 && wantSummary) {
       const payload = await readBody(response)
-      if (!JSON.stringify(payload).toLowerCase().includes('reasoning')) throw planError(400, payload)
+      const detail = JSON.stringify(payload).toLowerCase()
+      if (!detail.includes(selectedEffort ? 'summary' : 'reasoning')) throw planError(400, payload)
       noReasoningSummary.add(model)
-      delete body.reasoning
+      if (selectedEffort) body.reasoning = { effort: selectedEffort }
+      else delete body.reasoning
       response = await post(url, body, request)
     }
     if (!response.ok) throw planError(response.status, await readBody(response))
@@ -211,14 +215,17 @@ export const chatgptAdapter: ProviderAdapter = {
     }
     if (!response.ok) throw planError(response.status, await readBody(response))
     const json = (await response.json()) as {
-      models?: Array<{ slug?: string; display_name?: string; visibility?: string }>
+      models?: Array<{ slug?: string; display_name?: string; visibility?: string; supported_reasoning_levels?: { effort: string }[] }>
       data?: Array<{ id?: string }>
     }
     // The account's catalog keeps server order; only "list" models are meant for pickers.
     if (Array.isArray(json.models)) {
       return json.models
         .filter((m) => m.slug && (m.visibility ?? 'list') === 'list')
-        .map((m) => ({ id: m.slug!, label: m.display_name || undefined }))
+        .map((m) => {
+          const options = m.supported_reasoning_levels?.map(({ effort }) => ({ value: effort }))
+          return { id: m.slug!, label: m.display_name || undefined, reasoningEffort: options?.length ? { options } : undefined }
+        })
     }
     if (Array.isArray(json.data)) return json.data.filter((m) => m.id).map((m) => ({ id: m.id! }))
     return []

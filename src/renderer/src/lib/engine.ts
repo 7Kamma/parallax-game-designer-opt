@@ -3,12 +3,13 @@
 import { findModel, flushPersist, providerProblem, useStore } from '../store'
 import { isAbortError } from './http'
 import { newId } from './platform'
-import { chatTurns, estimateTokens, groupTurns, parseMentions, stripSpeakerPrefix, systemPromptFor } from './prompt'
+import { chatTurns, estimateTokens, groupOpeningHistory, groupTurns, parseMentions, stripSpeakerPrefix, systemPromptFor } from './prompt'
+import { conversationEffortOptions, reasoningEffortOptions, sessionReasoningEffort } from './reasoningEffort'
 import { adapterFor } from './providers'
 import { DEMO_COMPARE_PROMPT, DEMO_GROUP_PROMPT } from './providers/demo'
 import { DEMO_MODELS, DEMO_PROVIDER_ID } from './providers/presets'
 import { ProviderError, type ChatResult } from './providers/types'
-import type { Participant } from './types'
+import type { Message, Participant } from './types'
 
 const controllers = new Map<string, AbortController>()
 const store = () => useStore.getState()
@@ -41,20 +42,28 @@ export function stopAll() {
 }
 
 /** Sends one prompt to every target session. More than one target makes it a broadcast. */
-export function sendPrompt(text: string, sessionIds: string[]): void {
+export function sendPrompt(text: string, sessionIds: string[], { newDesignDirection = false } = {}): void {
   const prompt = text.trim()
-  if (!prompt) return
+  if (!prompt && !newDesignDirection) return
   const state = store()
-  const targets = sessionIds.filter((id) => state.sessions[id] && !controllers.has(id))
+  const targets = sessionIds.filter((id) => {
+    const session = state.sessions[id]
+    return session && !controllers.has(id) && (prompt || session.messages.some((message) => message.role === 'user'))
+  })
   if (targets.length === 0) return
   const broadcastId = targets.length > 1 ? newId() : undefined
+  const designAttempt = newDesignDirection
+    ? 1 + Math.max(...targets.map((id) => state.sessions[id].messages.findLast((message) => message.designAttempt)?.designAttempt ?? 0))
+    : undefined
   for (const id of targets) {
-    state.addMessage(id, { id: newId(), role: 'user', content: prompt, createdAt: Date.now(), broadcastId })
-    // Broadcast chats share a prompt, so lead their titles with the model to tell them apart.
-    const session = state.sessions[id]
-    const prefix = broadcastId ? (session.kind === 'group' ? 'Group' : session.participants[0]?.name) : undefined
-    state.autoTitle(id, prompt, prefix)
-    void respond(id, { prompt, broadcastId })
+    if (prompt) {
+      state.addMessage(id, { id: newId(), role: 'user', content: prompt, createdAt: Date.now(), broadcastId })
+      // Broadcast chats share a prompt, so lead their titles with the model to tell them apart.
+      const session = state.sessions[id]
+      const prefix = broadcastId ? (session.kind === 'group' ? 'Group' : session.participants[0]?.name) : undefined
+      state.autoTitle(id, prompt, prefix)
+    }
+    void respond(id, { prompt, broadcastId, designAttempt })
   }
 }
 
@@ -72,9 +81,9 @@ export function regenerate(sessionId: string, messageId: string) {
   if (!session || !message || message.role !== 'assistant') return
   store().truncateFrom(sessionId, messageId)
   if (session.kind === 'group' && message.participantId) {
-    void respond(sessionId, { only: [message.participantId], rounds: 1, broadcastId: message.broadcastId })
+    void respond(sessionId, { only: [message.participantId], rounds: 1, broadcastId: message.broadcastId, groupOpening: message.groupOpening, designAttempt: message.designAttempt })
   } else {
-    void respond(sessionId, { broadcastId: message.broadcastId })
+    void respond(sessionId, { broadcastId: message.broadcastId, designAttempt: message.designAttempt })
   }
 }
 
@@ -95,6 +104,8 @@ interface RespondOptions {
   broadcastId?: string
   rounds?: number
   only?: string[]
+  groupOpening?: boolean
+  designAttempt?: number
 }
 
 async function respond(sessionId: string, options: RespondOptions) {
@@ -102,15 +113,18 @@ async function respond(sessionId: string, options: RespondOptions) {
   try {
     const session = store().sessions[sessionId]
     if (!session) return
+    const { broadcastId, designAttempt } = options
+    const humanHistory = designAttempt ? session.messages.filter((message) => message.role === 'user') : undefined
     if (session.kind === 'chat') {
       const participant = session.participants[0]
-      if (participant) await generate(sessionId, participant, controller.signal, options.broadcastId)
+      if (participant) await generate(sessionId, participant, controller.signal, { broadcastId, openingHistory: humanHistory, designAttempt })
       return
     }
 
     const settings = store().settings.group
     const mentioned = options.only ?? (options.prompt ? parseMentions(options.prompt, session.participants) : [])
-    const rounds = mentioned.length && !options.only ? 1 : (options.rounds ?? session.rounds ?? settings.rounds)
+    const rounds = designAttempt || (mentioned.length && !options.only) ? 1 : (options.rounds ?? session.rounds ?? settings.rounds)
+    const openingHistory = humanHistory ?? (options.groupOpening || (options.prompt && !mentioned.length) ? groupOpeningHistory(session.messages) : undefined)
     for (let round = 0; round < rounds; round++) {
       const current = store().sessions[sessionId]
       if (!current) return
@@ -118,7 +132,7 @@ async function respond(sessionId: string, options: RespondOptions) {
       if ((current.order ?? settings.order) === 'random') speakers = shuffle(speakers)
       for (const speaker of speakers) {
         if (controller.signal.aborted) return
-        await generate(sessionId, speaker, controller.signal, options.broadcastId)
+        await generate(sessionId, speaker, controller.signal, { broadcastId, openingHistory: round === 0 ? openingHistory : undefined, designAttempt })
       }
     }
   } finally {
@@ -175,12 +189,18 @@ function describeError(err: unknown): string {
   return String(err)
 }
 
-async function generate(sessionId: string, participant: Participant, signal: AbortSignal, broadcastId?: string) {
+interface GenerateContext {
+  broadcastId?: string
+  openingHistory?: Message[]
+  designAttempt?: number
+}
+
+async function generate(sessionId: string, participant: Participant, signal: AbortSignal, { broadcastId, openingHistory, designAttempt }: GenerateContext) {
   const state = store()
   const session = state.sessions[sessionId]
   if (!session) return
   const provider = state.providers.find((p) => p.id === participant.providerId)
-  const history = session.messages
+  const history = openingHistory ?? session.messages
   const messageId = newId()
   state.addMessage(sessionId, {
     id: messageId,
@@ -188,6 +208,8 @@ async function generate(sessionId: string, participant: Participant, signal: Abo
     content: '',
     createdAt: Date.now(),
     participantId: participant.id,
+    groupOpening: session.kind === 'group' && openingHistory ? true : undefined,
+    designAttempt,
     model: { providerId: participant.providerId, modelId: participant.modelId, label: participant.name },
     status: 'streaming',
     broadcastId,
@@ -200,6 +222,7 @@ async function generate(sessionId: string, participant: Participant, signal: Abo
   }
 
   const group = session.kind === 'group'
+  const mode = group ? (openingHistory ? 'opening' : 'discussion') : (broadcastId ? 'comparison' : 'single')
   const buffer = new DeltaBuffer(sessionId, messageId, group ? (s) => stripSpeakerPrefix(s, participant.name) : undefined)
   const started = performance.now()
   let firstTokenMs: number | undefined
@@ -208,11 +231,16 @@ async function generate(sessionId: string, participant: Participant, signal: Abo
   }
 
   try {
+    const model = findModel(provider, participant.modelId)
+    const legacyGroupScale = group && session.reasoningEffort && !session.reasoningEffortScale
+      ? conversationEffortOptions(session, state.providers).map(({ value }) => value)
+      : undefined
     const result = await adapterFor(provider.kind).stream(
       {
         provider,
-        model: findModel(provider, participant.modelId),
-        system: systemPromptFor(session, participant, state.settings),
+        model,
+        reasoningEffort: sessionReasoningEffort(session, reasoningEffortOptions(provider.kind, model).map(({ value }) => value), legacyGroupScale),
+        system: systemPromptFor(session, participant, state.settings, mode, designAttempt),
         messages: group ? groupTurns(session, participant, history) : chatTurns(history),
         temperature: state.settings.temperature,
         maxOutputTokens: state.settings.maxOutputTokens,
@@ -233,7 +261,7 @@ async function generate(sessionId: string, participant: Participant, signal: Abo
     const totalMs = performance.now() - started
     store().patchMessage(sessionId, messageId, (m) => ({
       status: result.refusal ? 'refused' : 'done',
-      notice: result.refusal ? refusalNotice(result.refusal) : result.notice,
+      notice: result.refusal ? refusalNotice(result.refusal) : result.notice ?? (designAttempt ? 'New design direction' : undefined),
       metrics: {
         firstTokenMs,
         totalMs,

@@ -3,8 +3,10 @@ import { ArrowUp, FastForward, Square } from 'lucide-react'
 import { continueGroup, sendPrompt, stop } from '../lib/engine'
 import { openExternal } from '../lib/platform'
 import { CHATGPT_USAGE_URL } from '../lib/providers/chatgpt'
+import { conversationEffortOptions, sessionReasoningEffort, widestEffortScale } from '../lib/reasoningEffort'
 import type { Session } from '../lib/types'
 import { modelLabel, useFeatures, useStore } from '../store'
+import { ReasoningEffortSelect } from './ReasoningEffortSelect'
 import { Dot, cn } from './ui'
 
 function paneLabel(session: Session, providers: ReturnType<typeof useStore.getState>['providers']): string {
@@ -32,6 +34,7 @@ export function Composer() {
   const running = useStore((s) => s.running)
   const sendOnEnter = useStore((s) => s.settings.sendOnEnter)
   const toggleTarget = useStore((s) => s.toggleTarget)
+  const updateSession = useStore((s) => s.updateSession)
   const features = useFeatures()
   const [text, setText] = useState('')
   const input = useRef<HTMLTextAreaElement>(null)
@@ -47,6 +50,10 @@ export function Composer() {
     return s?.kind === 'group' && s.messages.some((m) => m.role === 'assistant') && !running[id]
   })
   const canSend = text.trim().length > 0 && targets.length > 0 && busy.length === 0 && !blocked
+  const canExplore = targets.every((id) => sessions[id]?.messages.some((message) => message.role === 'user')) &&
+    targets.some((id) => sessions[id]?.messages.some((message) =>
+      message.role === 'assistant' && (message.status === 'done' || !message.status) && message.content.trim(),
+    ))
   // OpenAI's guidelines ask apps to show when a request will use the ChatGPT plan.
   const chatgptProviders = new Set(providers.filter((p) => p.kind === 'chatgpt').map((p) => p.id))
   const usesPlan = targets.some((id) => sessions[id]?.participants.some((p) => !p.muted && chatgptProviders.has(p.providerId)))
@@ -71,6 +78,18 @@ export function Composer() {
   }
 
   const focusedSession = focused ? sessions[focused] : undefined
+  const effortTargets = targets.flatMap((id) => {
+    const session = sessions[id]
+    if (!session) return []
+    const options = conversationEffortOptions(session, providers)
+    return options.length ? [{ session, options }] : []
+  })
+  const effortOptions = widestEffortScale(effortTargets.map(({ options }) => options))
+  const effortScale = effortOptions.map(({ value }) => value)
+  const selectedEfforts = new Set(effortTargets.map(({ session, options }) =>
+    sessionReasoningEffort(session, effortScale, options.map(({ value }) => value)) ?? '',
+  ))
+  const effort = selectedEfforts.size > 1 ? undefined : [...selectedEfforts][0] ?? ''
   const placeholder =
     targets.length > 1
       ? `Message ${targets.length} chats at once`
@@ -142,20 +161,38 @@ export function Composer() {
             {groupTargets.length > 0 && busy.length === 0 && (
               <button
                 type="button"
-                title="Let the models keep talking for one more round"
+                title="Discuss the ideas from the previous round"
                 onClick={() => groupTargets.forEach(continueGroup)}
                 className="inline-flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-xs text-muted hover:bg-hover hover:text-fg"
               >
                 <FastForward className="size-3.5" /> Continue
               </button>
             )}
+            {canExplore && busy.length === 0 && !blocked && (
+              <button
+                type="button"
+                title="保留你的简报和消息，隐藏之前的模型回答。输入框有草稿时会一并发送。"
+                onClick={() => {
+                  sendPrompt(text, targets, { newDesignDirection: true })
+                  setText('')
+                }}
+                className="inline-flex h-8 shrink-0 items-center rounded-full border border-line px-3 text-xs text-muted hover:bg-hover hover:text-fg"
+              >
+                换方向
+              </button>
+            )}
+            <ReasoningEffortSelect options={effortOptions} value={effort} onChange={(value) => {
+              for (const { session } of effortTargets) {
+                updateSession(session.id, { reasoningEffort: value, reasoningEffortScale: effortScale })
+              }
+            }} />
             {busy.length > 0 ? (
               <button
                 type="button"
                 aria-label="Stop generating"
                 title="Stop (Esc)"
                 onClick={() => busy.forEach(stop)}
-                className="inline-flex size-8 items-center justify-center rounded-full bg-fg text-app hover:opacity-80"
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-fg text-app hover:opacity-80"
               >
                 <Square className="size-3 fill-current" />
               </button>
@@ -165,7 +202,7 @@ export function Composer() {
                 aria-label="Send"
                 disabled={!canSend}
                 onClick={send}
-                className="inline-flex size-8 items-center justify-center rounded-full bg-fg text-app transition-opacity hover:opacity-80 disabled:opacity-25"
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-fg text-app transition-opacity hover:opacity-80 disabled:opacity-25"
               >
                 <ArrowUp className="size-4" />
               </button>

@@ -60,6 +60,7 @@ export const CHATGPT_PLAN_NOT_ENABLED = 'chatgpt_plan_not_enabled'
 export interface ParallaxBridge {
   /** desktop = the Electron app; local = the web app served by `npm run serve` on this computer. */
   runtime: 'desktop' | 'local'
+  signInToCursor?(providerId: string): Promise<void>
   platform: string
   versions: { electron: string; chrome: string; node: string }
   keys: {

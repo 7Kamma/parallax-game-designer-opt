@@ -27,6 +27,16 @@ const CLAUDE_MODELS: ModelInfo[] = [
 
 export const PRESETS: ProviderPreset[] = [
   {
+    id: 'cursor-sdk',
+    name: 'Cursor SDK',
+    kind: 'openai',
+    baseUrl: 'https://cursor-sdk.invalid',
+    requiresKey: true,
+    description: 'Use a Cursor user API key to chat through the official Cursor SDK in the desktop app.',
+    keyUrl: 'https://cursor.com/dashboard?tab=api-keys',
+    browserSupport: 'no',
+  },
+  {
     id: 'anthropic',
     name: 'Anthropic',
     kind: 'anthropic',

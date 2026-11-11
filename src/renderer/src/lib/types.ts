@@ -13,6 +13,7 @@ export interface ModelInfo {
   /** Anthropic capability flags reported by the Models API. */
   adaptiveThinking?: boolean
   effort?: boolean
+  reasoningEffort?: { parameterId?: string; options: { value: string; label?: string }[] }
 }
 
 export type Effort = '' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
@@ -50,6 +51,8 @@ export interface Participant {
   id: string
   providerId: string
   modelId: string
+  /** Legacy selection from before the chat-level control. */
+  reasoningEffort?: string
   name: string
   color: string
   /** Extra instructions for this participant only (a persona). */
@@ -74,6 +77,10 @@ export interface Message {
   content: string
   createdAt: number
   participantId?: string
+  /** Reuse the original shared starting context when regenerating this reply. */
+  groupOpening?: boolean
+  /** Reapply the same design approach when regenerating a fresh-direction reply. */
+  designAttempt?: number
   /** Snapshot of the model that wrote an assistant message. */
   model?: ModelRef & { label: string }
   status?: MessageStatus
@@ -99,6 +106,8 @@ export interface Session {
   participants: Participant[]
   messages: Message[]
   systemPrompt?: string
+  reasoningEffort?: string
+  reasoningEffortScale?: string[]
   createdAt: number
   updatedAt: number
   pinned?: boolean

@@ -2,18 +2,29 @@
 
 <img src="build/icon.png" width="96" alt="Parallax logo" />
 
-# Parallax
+# Parallax Game Designer Opt
 
-**One prompt, many models.** A desktop chat app for Claude, GPT, Gemini and any OpenAI-compatible model.
-Run several chats side by side, send one prompt to all of them, compare the answers, or put several models
-in a single group chat and let them talk to each other.
+由 [7Kamma](https://github.com/7Kamma) 维护的游戏设计二次修改版，支持单模型讨论、多模型横向对比和群聊评审。
 
-[Download for Windows](https://github.com/Houchen181/parallax/releases/latest) ·
-[Try it in your browser](https://houchen181.github.io/parallax/) ·
-[Add it to Claude or Codex](#use-parallax-in-claude-and-codex) ·
-[Report an issue](https://github.com/Houchen181/parallax/issues)
+[Windows 构建](#windows-desktop-app) ·
+[维护文档](docs/maintenance.md) ·
+[Parallax 原版](https://github.com/Houchen181/parallax/tree/v0.4.2)
 
 </div>
+
+**来源与许可证**　原项目为 Houchen181 的 [Parallax v0.4.2](https://github.com/Houchen181/parallax/tree/v0.4.2)，基线提交为 [`eae0d3a`](https://github.com/Houchen181/parallax/commit/eae0d3a307487cc31ec60f7ee93b2e25ae6c40e0)。本仓库采用 [MIT License](LICENSE)，保留原作者的版权及许可声明。
+
+## 相比原版的改动
+
+| 改动 | 用法 |
+|---|---|
+| **游戏设计提示** | 单聊会追查规则与激励并给出验证办法。横向对比让各模型用相同维度独立提案。群聊按玩家体验、系统平衡、制作与试玩等角度分工。对话菜单中的 **Instructions / design brief** 可记录目标、约束和已定方案，横向对比也可填写一份共用简报。 |
+| **群聊先提案，再互评** | 首轮模型共享用户提问时的上下文，各自独立回答。点 **Continue** 后，模型读取提案并按相同的体验目标与约束比较。 |
+| **换方向** | 当前方案缺少新意时，点输入框旁的 **换方向**。本轮使用简报与用户消息，暂时省略模型旧回答，并轮换构思方法。输入框内的草稿会一并发送。 |
+| **统一思考强度** | 发送按钮旁的下拉框按对话保存。群聊和横向对比显示参与模型中最多的档位，再映射到各模型支持的值。支持 ChatGPT Plan、Cursor SDK、DeepSeek 官方接口和支持 effort 的 Claude。 |
+| **Cursor 订阅** | Windows 桌面版在 **Settings → Providers → Add provider → Cursor SDK** 提供 **使用 Cursor 登录**。浏览器授权后，通过 Cursor 官方 SDK 调用该账号可用的模型。 |
+
+下方截图来自上游 Parallax，展示基本界面。
 
 ![Three models answering the same prompt side by side](docs/screenshots/compare.png)
 
@@ -30,9 +41,9 @@ in a single group chat and let them talk to each other.
 - **Compare.** Every broadcast prompt gets a *Compare* button that shows the replies side by side. The view
   marks the fastest start, the first to finish, and the most detailed and most concise answers, and can show
   a word-level diff against any reply.
-- **Group chat.** Put several models in one conversation. They take turns, read what the others said, and can
-  build on it or disagree. You choose how many rounds follow each message, the speaking order and a persona
-  for each model. Start a message with `@name` to hear from specific models only.
+- **Group chat.** Put several models in one conversation. Each gives an independent first reply. Additional
+  rounds and **Continue** let the models discuss earlier replies. You can set the round count, speaking order
+  and participant personas. Use `@name` to hear from specific models only.
 - **Everything is optional.** Each of these features can be turned off in Settings → Features.
 - **A plugin for Claude and Codex.** Ask several models at once, or let them debate, from inside Claude Code,
   Claude Desktop or Codex. See [Use Parallax in Claude and Codex](#use-parallax-in-claude-and-codex).
@@ -58,13 +69,23 @@ in a single group chat and let them talk to each other.
 
 ### Windows desktop app
 
-Download `Parallax-Setup-<version>.exe` from the
-[latest release](https://github.com/Houchen181/parallax/releases/latest) and run it. The installer isn't
-code-signed yet, so Windows SmartScreen may warn you. Choose **More info → Run anyway**.
+Build this fork on Windows x64 with Git and Node.js 24.
+
+```powershell
+git clone https://github.com/7Kamma/parallax-game-designer-opt.git
+cd parallax-game-designer-opt
+npm ci
+npm run dist:win
+```
+
+Run `release/Parallax-Setup-<version>.exe`. The fork uses the Parallax app identity and user-data directory.
+Use the installer to update an existing installation. See [maintenance](docs/maintenance.md#windows-构建与更新)
+for packaging checks. The [upstream releases](https://github.com/Houchen181/parallax/releases) contain the original app.
 
 ### Web version
 
-Open <https://houchen181.github.io/parallax/>. It's the same app running in the browser.
+Open the upstream browser demo at <https://houchen181.github.io/parallax/>. To try this fork in a browser,
+run its local web version below.
 
 - Keys are stored in that browser's local storage and sent straight to each provider.
 - Some providers don't accept requests from web pages (CORS), so they only work in the desktop app or the local
@@ -78,15 +99,15 @@ Open <https://houchen181.github.io/parallax/>. It's the same app running in the 
 This runs Parallax in your browser, served from your own computer. Because it then counts as a local app, it
 gets the same powers as the desktop app:
 - **Sign in with ChatGPT** works.
-- Every provider works, including ones that block web pages.
+- The local server can connect to HTTP providers that block direct browser requests. Cursor SDK runs in the Electron desktop app.
 - API keys stay out of the browser.
 
-You need [Node.js](https://nodejs.org) 22 or newer.
+Use [Node.js](https://nodejs.org) 24.
 
 ```bash
-git clone https://github.com/Houchen181/parallax.git
-cd parallax
-npm install
+git clone https://github.com/7Kamma/parallax-game-designer-opt.git
+cd parallax-game-designer-opt
+npm ci
 npm run serve
 ```
 
@@ -106,10 +127,10 @@ Parallax opens at <http://127.0.0.1:4747/>.
 1. Open **Settings → Providers**, pick a provider and paste your API key. Parallax fetches that provider's
    model list automatically. To add another provider, click **Add provider** and choose one of the presets.
    With a ChatGPT Plus or Pro plan, you can instead pick **ChatGPT plan** and click **Continue with ChatGPT**
-   (desktop app or local web version).
+   (desktop app or local web version). On Windows, add **Cursor SDK** and choose **使用 Cursor 登录** to use Cursor.
 2. Start a chat with **New chat** and pick a model at the top of the pane.
-3. To compare models, click **Compare models**, tick the models you want and type a question. Each model gets
-   its own pane, and your messages go to all of them.
+3. To compare models, click **Compare models**, tick the models you want and type a question. You can set a
+   shared design brief and reasoning effort before opening the panes. Each model gets its own pane.
 4. For a group chat, click **New group chat**. Use the **+** button to add models and the sliders button to
    set the rounds and the speaking order.
 
@@ -125,6 +146,8 @@ Keyboard shortcuts:
 
 ### Using a subscription instead of an API key
 
+- **Cursor, in the Windows desktop app.** The [Cursor SDK browser authorization](https://cursor.com/docs/sdk/typescript#authentication)
+  creates a user credential for Parallax. Usage follows your Cursor plan and account spending settings.
 - **ChatGPT Plus or Pro: yes, in the desktop app or the [local web version](#run-the-web-version-on-your-computer).**
   Parallax supports OpenAI's
   [Sign in with ChatGPT plan usage](https://developers.openai.com/siwc/token-sharing-open-source) for
@@ -142,7 +165,8 @@ Keyboard shortcuts:
 
 ## Use Parallax in Claude and Codex
 
-Parallax also comes as a plugin for Claude Code, Claude Desktop and Codex. Your assistant can then get a
+The installation links in this section point to the upstream plugin. Parallax also comes as a plugin for
+Claude Code, Claude Desktop and Codex. Your assistant can then get a
 second opinion from other models, compare their answers or let them argue a question out, without you leaving
 the chat. For example:
 
@@ -263,6 +287,7 @@ collects the rest with `get_results`.
 | Anthropic | Messages API through the official `@anthropic-ai/sdk` | Thinking summaries, effort setting, prompt caching, refusal fallback |
 | OpenAI | Chat Completions | GPT and o-series models |
 | ChatGPT plan | Responses API, signed in with ChatGPT | Desktop app or local web version; uses your Plus or Pro plan, with reasoning summaries |
+| Cursor SDK | Official Cursor TypeScript SDK | Windows desktop app with browser authorization, an account model catalog and model-specific reasoning levels |
 | Google Gemini | Gemini's OpenAI-compatible endpoint | |
 | OpenRouter, Groq, DeepSeek, Mistral, xAI, Together | Chat Completions | One preset each |
 | Ollama, LM Studio | Chat Completions on `localhost` | No key needed |
@@ -307,12 +332,12 @@ Notes on Claude:
 
 ## Development
 
-You need Node.js 22 or newer.
+Use Node.js 24.
 
 ```bash
-git clone https://github.com/Houchen181/parallax.git
-cd parallax
-npm install
+git clone https://github.com/7Kamma/parallax-game-designer-opt.git
+cd parallax-game-designer-opt
+npm ci
 npm run dev        # desktop app with hot reload
 ```
 
@@ -334,7 +359,7 @@ Project layout:
 
 ```
 src/main/        Electron main process: window, encrypted key store, streaming HTTP proxy,
-                 Sign in with ChatGPT (chatgpt.ts)
+                 Sign in with ChatGPT (chatgpt.ts) and Cursor SDK (cursor.ts)
 src/preload/     The small, typed bridge exposed to the UI
 src/server/      Local web server for `npm run serve` (static files, key store, proxy, ChatGPT sign-in)
 src/mcp/         The plugin's MCP server: tools, background jobs, key page. Reuses the UI's provider adapters
@@ -352,9 +377,9 @@ scripts/         Dev runner, build helpers, mock server, icon generator
 
 ### Releasing
 
-Push a tag such as `v0.4.0`. GitHub Actions builds the installer and the Claude Desktop extension on Windows
-and attaches both to the release. Every push to `main` runs the tests, checks that the committed plugin bundle
-is up to date, and deploys the web version to GitHub Pages.
+Pushing a new `v*` tag triggers the Windows installer and Claude Desktop extension release workflow.
+Pushes to `main` run the tests, check the committed plugin bundle and build the web version. The GitHub Pages
+deployment steps run on the upstream repository.
 
 ## License
 

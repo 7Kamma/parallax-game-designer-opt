@@ -3,6 +3,7 @@ import type { ChatGPTAccount, ChatGPTSignInResult, HttpEvent, ParallaxBridge, Sa
 
 const bridge: ParallaxBridge = {
   runtime: 'desktop',
+  signInToCursor: (providerId) => ipcRenderer.invoke('cursor:signIn', providerId),
   platform: process.platform,
   versions: {
     electron: process.versions.electron ?? '',

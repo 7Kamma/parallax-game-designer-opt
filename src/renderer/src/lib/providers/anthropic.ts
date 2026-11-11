@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { AuthSpec } from '../../../../shared/bridge'
 import { abortError, fetchWithAuth, isAbortError } from '../http'
-import type { Effort, ModelInfo, ProviderConfig } from '../types'
+import { CLAUDE_ADAPTIVE_FAMILIES, CLAUDE_EFFORT_LEVELS, reasoningEffortOptions } from '../reasoningEffort'
+import type { ModelInfo, ProviderConfig } from '../types'
 import { ProviderError, type ChatRequest, type ChatResult, type ProviderAdapter, type StreamHandlers } from './types'
 
 // The transport attaches the real key (the main process does it on the desktop),
@@ -12,8 +13,6 @@ const FALLBACK_BETA = 'server-side-fallback-2026-07-01'
 
 type BetaStreamParams = Parameters<Anthropic['beta']['messages']['stream']>[0]
 
-// Used when the Models API did not report capabilities (e.g. a model id typed by hand).
-const ADAPTIVE_FAMILIES = /^claude-(fable|mythos|opus-5|sonnet-5|opus-4-[678]|sonnet-4-6)/
 // These still accept `temperature`; newer models reject sampling parameters.
 const SAMPLING_FAMILIES = /^claude-(haiku-4-5|sonnet-4-6|opus-4-6|sonnet-4-5|opus-4-5|opus-4-1|opus-4-0|sonnet-4-0|opus-4-2|sonnet-4-2|3)/
 // Models that accept `fallbacks: "default"` (server-side retry after a policy decline).
@@ -31,7 +30,7 @@ function createClient(provider: ProviderConfig): Anthropic {
 }
 
 function capabilities(model: ModelInfo) {
-  const adaptive = model.adaptiveThinking ?? ADAPTIVE_FAMILIES.test(model.id)
+  const adaptive = model.adaptiveThinking ?? CLAUDE_ADAPTIVE_FAMILIES.test(model.id)
   const isFourSix = /-4-6/.test(model.id)
   return {
     adaptive,
@@ -44,10 +43,13 @@ function capabilities(model: ModelInfo) {
   }
 }
 
-function effortFor(model: ModelInfo, effort: Effort | undefined): Anthropic.OutputConfig['effort'] | undefined {
+function effortFor(model: ModelInfo, effort: string | undefined): Anthropic.OutputConfig['effort'] | undefined {
   const caps = capabilities(model)
   if (!effort || !caps.effort) return undefined
-  return effort === 'xhigh' && caps.noXhigh ? 'high' : effort
+  const value = effort === 'xhigh' && caps.noXhigh ? 'high' : effort
+  return reasoningEffortOptions('anthropic', model).some((option) => option.value === value)
+    ? CLAUDE_EFFORT_LEVELS.find((level) => level === value)
+    : undefined
 }
 
 type SharedParams = Omit<Anthropic.MessageStreamParams, 'output_config'>
@@ -134,7 +136,7 @@ export const anthropicAdapter: ProviderAdapter = {
   async stream(request: ChatRequest, handlers: StreamHandlers): Promise<ChatResult> {
     const client = createClient(request.provider)
     const params = buildParams(request)
-    const effort = effortFor(request.model, request.provider.effort)
+    const effort = effortFor(request.model, request.reasoningEffort ?? request.provider.effort)
     const options = { signal: request.signal }
     try {
       if (usesFallback(request)) {
@@ -184,13 +186,16 @@ export const anthropicAdapter: ProviderAdapter = {
     try {
       const models: ModelInfo[] = []
       for await (const model of client.models.list({ limit: 100 })) {
+        const effort = model.capabilities?.effort
+        const options = CLAUDE_EFFORT_LEVELS.filter((value) => effort?.[value]?.supported).map((value) => ({ value }))
         models.push({
           id: model.id,
           label: model.display_name,
           maxOutput: model.max_tokens ?? undefined,
           contextWindow: model.max_input_tokens ?? undefined,
           adaptiveThinking: model.capabilities?.thinking.types.adaptive.supported,
-          effort: model.capabilities?.effort.supported,
+          effort: effort?.supported,
+          reasoningEffort: options.length ? { options } : undefined,
         })
       }
       return models

@@ -13,7 +13,7 @@ export const electronBuildOptions = {
   platform: 'node',
   format: 'cjs',
   target: 'node22',
-  external: ['electron'],
+  external: ['electron', '@cursor/sdk'],
   sourcemap: true,
   logLevel: 'info',
 }

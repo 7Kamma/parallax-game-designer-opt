@@ -37,15 +37,15 @@ jobs:
       - run: npm run build:web
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-      - if: github.event_name != 'pull_request'
+      - if: github.repository == 'Houchen181/parallax' && github.event_name != 'pull_request'
         uses: actions/configure-pages@v6
-      - if: github.event_name != 'pull_request'
+      - if: github.repository == 'Houchen181/parallax' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist/web
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.repository == 'Houchen181/parallax' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:

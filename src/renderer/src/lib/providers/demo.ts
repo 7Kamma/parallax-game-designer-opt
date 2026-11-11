@@ -64,7 +64,7 @@ const GROUP_REPLIES: Record<Persona, string[]> = {
     `Fair point from Skeptic about the browser. I'd still say Python first for most people, but if the goal is "I want to make websites", start with JavaScript and don't look back.`,
   ],
   thorough: [
-    `I agree with Concise for general-purpose learning, with one caveat: **the best first language is the one attached to a project you care about.**
+    `**The best first language is the one attached to a project you care about.**
 
 - **Python** suits data, science, automation and scripting. Its clean syntax lets beginners focus on concepts like loops, functions and data structures.
 - **JavaScript** suits anything visual or web-based. You get instant feedback in the browser, which is very motivating.
@@ -81,7 +81,7 @@ Both teach the same fundamentals, and moving from one to the other later takes w
 We all agree the fundamentals transfer, so the choice matters less than starting.`,
   ],
   skeptic: [
-    `I'll push back a little on both of you. Python's simplicity hides some things beginners eventually need to understand, like how values are passed around. And JavaScript has one huge advantage: **every computer already runs it.** No installation, and you can share what you build with a link.
+    `I'd lean JavaScript if immediate feedback keeps the learner motivated. A few lines can change something visible in the browser, and you can share what you build with a link.
 
 The real risk isn't picking the "wrong" language. It's spending a month comparing languages instead of writing code.`,
     `Thorough's table is a good summary. My only addition: pick one, commit to it for at least a month, and ignore the internet arguments about which is better. Consistency beats optimisation at the start.`,

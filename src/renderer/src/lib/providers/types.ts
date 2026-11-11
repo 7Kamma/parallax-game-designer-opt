@@ -8,6 +8,7 @@ export interface ChatTurn {
 export interface ChatRequest {
   provider: ProviderConfig
   model: ModelInfo
+  reasoningEffort?: string
   system?: string
   messages: ChatTurn[]
   temperature: number | null

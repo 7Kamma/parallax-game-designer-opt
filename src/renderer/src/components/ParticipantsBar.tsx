@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, SlidersHorizontal, Trash2, VolumeX, Volume2, Replace } from 'lucide-react'
-import { handleFor } from '../lib/prompt'
+import { gameDesignFocusFor, handleFor } from '../lib/prompt'
 import type { Participant, Session, SpeakingOrder } from '../lib/types'
 import { modelLabel, useStore } from '../store'
 import { ModelPicker } from './ModelPicker'
@@ -21,6 +21,7 @@ function ParticipantEditor({
   const remove = useStore((s) => s.removeParticipant)
   const provider = useStore((s) => s.providers.find((p) => p.id === participant.providerId))
   const [picker, setPicker] = useState<HTMLElement | null>(null)
+  const focus = gameDesignFocusFor(session, participant)
 
   return (
     <Popover anchor={anchor} open onClose={onClose} className="w-80 p-3">
@@ -54,7 +55,7 @@ function ParticipantEditor({
           <span className="mb-1 block text-xs font-medium text-muted">Persona or extra instructions</span>
           <textarea
             className={cn(inputClass, 'min-h-20 resize-y')}
-            placeholder="e.g. You are a careful reviewer who looks for flaws in other answers."
+            placeholder={focus ? `Default game design focus: ${focus.label}. Enter a persona to replace it.` : 'Enter a persona or extra instructions.'}
             value={participant.systemPrompt ?? ''}
             onChange={(e) => update(session.id, participant.id, { systemPrompt: e.target.value })}
           />
@@ -115,7 +116,7 @@ function GroupOptions({ session, anchor, onClose }: { session: Session; anchor: 
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-xs text-subtle">Each model speaks once per round, so they can reply to each other.</p>
+          <p className="mt-1.5 text-xs text-subtle">Models answer independently in the first round and discuss each other’s ideas in later rounds.</p>
         </div>
         <div>
           <div className="mb-1.5 text-xs font-medium text-muted">Speaking order</div>
