@@ -20,8 +20,8 @@ This fork is based on Houchen181's [Parallax v0.4.2](https://github.com/Houchen1
 |---|---|
 | **Game design guidance** | Single-model chats dig into rules, incentives, and ways to test a proposal. Side-by-side comparisons give models the same criteria. Group chats assign perspectives such as player experience, systems and balance, and scope and playtesting. Record goals, constraints, and decisions under **Instructions / design brief**, or share one brief across a comparison. |
 | **Independent proposals in group chats** | Each model answers the opening round independently. Click **Continue** to have the models review the proposals against the same experience goals and constraints. |
-| **New direction** | Try a fresh approach from the composer. Each attempt uses the brief and your messages, leaves earlier model replies out of the request, and rotates the ideation approach. Text in the composer is sent with the request. |
-| **Shared reasoning effort** | The selector next to Send saves effort per conversation. Group chats and side-by-side comparisons show the most detailed scale available and map it to each model's supported levels. This works with ChatGPT Plan, Cursor SDK, the official DeepSeek API, and Claude models that support effort. |
+| **New direction** | Try a fresh approach with the button to the left of Send. Each attempt uses the brief and your messages, leaves earlier model replies out of the request, and rotates the ideation approach. Start with a draft or reuse the topic in each selected chat. |
+| **Shared reasoning effort** | The selector in the composer saves effort per conversation. Group chats and side-by-side comparisons show the most detailed scale available and map it to each model's supported levels. This works with ChatGPT Plan, Cursor SDK, the official DeepSeek API, and Claude models that support effort. |
 | **Cursor plan usage** | In the Windows desktop app, open **Settings → Providers → Add provider → Cursor SDK** and select **Continue with Cursor**. After browser authorization, the official Cursor SDK uses the models available to your account. |
 
 The screenshots below show the upstream Parallax interface.

@@ -49,11 +49,10 @@ export function Composer() {
     const s = sessions[id]
     return s?.kind === 'group' && s.messages.some((m) => m.role === 'assistant') && !running[id]
   })
-  const canSend = text.trim().length > 0 && targets.length > 0 && busy.length === 0 && !blocked
-  const canExplore = targets.every((id) => sessions[id]?.messages.some((message) => message.role === 'user')) &&
-    targets.some((id) => sessions[id]?.messages.some((message) =>
-      message.role === 'assistant' && (message.status === 'done' || !message.status) && message.content.trim(),
-    ))
+  const readyToSend = targets.length > 0 && busy.length === 0 && !blocked
+  const hasDraft = text.trim().length > 0
+  const canSend = readyToSend && hasDraft
+  const canExplore = readyToSend && (hasDraft || targets.every((id) => sessions[id]?.messages.some((message) => message.role === 'user')))
   // OpenAI's guidelines ask apps to show when a request will use the ChatGPT plan.
   const chatgptProviders = new Set(providers.filter((p) => p.kind === 'chatgpt').map((p) => p.id))
   const usesPlan = targets.some((id) => sessions[id]?.participants.some((p) => !p.muted && chatgptProviders.has(p.providerId)))
@@ -168,24 +167,23 @@ export function Composer() {
                 <FastForward className="size-3.5" /> Continue
               </button>
             )}
-            {canExplore && busy.length === 0 && !blocked && (
-              <button
-                type="button"
-                title="Try a fresh approach using only your brief and messages. Sends any text in the input box."
-                onClick={() => {
-                  sendPrompt(text, targets, { newDesignDirection: true })
-                  setText('')
-                }}
-                className="inline-flex h-8 shrink-0 items-center rounded-full border border-line px-3 text-xs text-muted hover:bg-hover hover:text-fg"
-              >
-                New direction
-              </button>
-            )}
             <ReasoningEffortSelect options={effortOptions} value={effort} onChange={(value) => {
               for (const { session } of effortTargets) {
                 updateSession(session.id, { reasoningEffort: value, reasoningEffortScale: effortScale })
               }
             }} />
+            <button
+              type="button"
+              disabled={!canExplore}
+              title="Try a fresh approach using only your brief and messages. Sends any text in the input box."
+              onClick={() => {
+                sendPrompt(text, targets, { newDesignDirection: true })
+                setText('')
+              }}
+              className="inline-flex h-8 shrink-0 items-center rounded-full border border-line px-3 text-xs text-muted enabled:hover:bg-hover enabled:hover:text-fg disabled:opacity-40"
+            >
+              New direction
+            </button>
             {busy.length > 0 ? (
               <button
                 type="button"
